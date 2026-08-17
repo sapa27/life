@@ -1,28 +1,35 @@
 // Thai Life Insurance Planning & Policy System
-// GitHub Pages runtime configuration — MessagePort Bridge v2
-(function installGasMessagePortAdapter_(){
+// GitHub Pages runtime configuration — GAS Bridge compatibility v3
+(function installGasBridgeCompatibilityV3_(){
   'use strict';
+
   const nativeGetById = document.getElementById.bind(document);
   const nativeAddEventListener = window.addEventListener.bind(window);
   let bridgePort = null;
+  let bridgeSource = null;
   let bridgeProxy = null;
   let fakeWindow = null;
 
   function trustedGasOrigin(origin){
     try {
-      const host = new URL(origin).hostname;
+      const host = new URL(origin).hostname.toLowerCase();
       return host === 'script.google.com' ||
              host === 'script.googleusercontent.com' ||
+             host.endsWith('-script.googleusercontent.com') ||
              host.endsWith('.script.googleusercontent.com');
-    } catch (_) { return false; }
+    } catch (_) {
+      return false;
+    }
   }
 
-  function getRealFrame(){ return nativeGetById('gasBridge'); }
+  function getRealFrame(){
+    return nativeGetById('gasBridge');
+  }
 
   function dispatchBridgeMessage(data){
     try {
       const ev = new MessageEvent('message', {
-        data,
+        data: data || {},
         origin: 'https://script.googleusercontent.com',
         source: fakeWindow
       });
@@ -36,8 +43,14 @@
         bridgePort.postMessage(packet);
         return;
       }
+      if (bridgeSource && typeof bridgeSource.postMessage === 'function') {
+        bridgeSource.postMessage(packet, '*');
+        return;
+      }
       const real = getRealFrame();
-      if (real && real.contentWindow) real.contentWindow.postMessage(packet, '*');
+      if (real && real.contentWindow) {
+        real.contentWindow.postMessage(packet, '*');
+      }
     }
   };
 
@@ -56,6 +69,8 @@
     });
   }
 
+  // Keep legacy app.js unchanged. Whenever it asks for #gasBridge, expose a
+  // proxy whose contentWindow is the real inner GAS source/MessagePort channel.
   document.getElementById = function(id){
     const real = nativeGetById(id);
     if (id !== 'gasBridge' || !real) return real;
@@ -63,27 +78,39 @@
     return bridgeProxy;
   };
 
-  // Bridge v2 sends LI_GAS_READY directly from the inner Apps Script sandbox
-  // to the GitHub top window and transfers a MessagePort. The adapter turns
-  // that direct channel into the legacy iframe.contentWindow interface used by
-  // app.js, so the application/business code does not need to be duplicated.
   nativeAddEventListener('message', function(ev){
+    // Ignore synthetic messages created below; they are for app.js only.
+    if (ev.source === fakeWindow) return;
+
     const m = ev.data || {};
-    if (m.type !== 'LI_GAS_READY' || !m.bridgeNonce) return;
-    const port = ev.ports && ev.ports[0];
-    if (!port || !trustedGasOrigin(ev.origin)) return;
-    if (m.allowedOrigin && m.allowedOrigin !== '*' && m.allowedOrigin !== location.origin) {
-      dispatchBridgeMessage({
-        type: 'LI_GAS_ORIGIN_REJECTED',
-        receivedOrigin: location.origin,
-        allowedOrigin: m.allowedOrigin,
-        version: m.version || ''
-      });
-      return;
+    if (!/^LI_GAS_/.test(String(m.type || ''))) return;
+    if (!trustedGasOrigin(ev.origin)) return;
+
+    bridgeSource = ev.source || bridgeSource;
+
+    if (m.type === 'LI_GAS_READY' && m.bridgeNonce) {
+      const port = ev.ports && ev.ports[0];
+      if (port) {
+        bridgePort = port;
+        bridgePort.onmessage = function(e){
+          dispatchBridgeMessage(e.data || {});
+        };
+        if (bridgePort.start) bridgePort.start();
+      }
+
+      if (m.allowedOrigin && m.allowedOrigin !== '*' && m.allowedOrigin !== location.origin) {
+        dispatchBridgeMessage({
+          type: 'LI_GAS_ORIGIN_REJECTED',
+          receivedOrigin: location.origin,
+          allowedOrigin: m.allowedOrigin,
+          version: m.version || ''
+        });
+        return;
+      }
     }
-    bridgePort = port;
-    bridgePort.onmessage = function(e){ dispatchBridgeMessage(e.data || {}); };
-    if (bridgePort.start) bridgePort.start();
+
+    // Forward READY, RESPONSE and diagnostics to legacy app.js using the
+    // synthetic iframe WindowProxy that app.js expects.
     dispatchBridgeMessage(m);
   }, true);
 })();
@@ -92,7 +119,7 @@ window.LIFE_APP_CONFIG = Object.freeze({
   GAS_WEB_APP_URL: 'https://script.google.com/macros/s/AKfycbxWgwgIlAKbkF9raEX566-Pp9iCQGUKiDJk7yXmcSrJXcXSoRkIcWKpAnCDhKME8udm/exec',
   BRIDGE_TIMEOUT_MS: 30000,
   REQUEST_TIMEOUT_MS: 90000,
-  BUILD_ID: '20260817-message-port-v2',
+  BUILD_ID: '20260817-gas-bridge-compat-v3',
   BRAND: Object.freeze({
     COMPANY_NAME: 'บริษัท ชับบ์ ไลฟ์ แอสชัวรันซ์ จำกัด (มหาชน)',
     DISPLAY_NAME: 'Chubb Life Thailand',
