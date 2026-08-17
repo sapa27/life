@@ -89,7 +89,7 @@
 })();
 
 window.LIFE_APP_CONFIG = Object.freeze({
-  GAS_WEB_APP_URL: 'https://script.google.com/macros/s/AKfycbwEkuaRFgwdPwiErMlK2MkmvIk4905jRuIIk9U8LAYhyh70PLLhAJ4svUh_Cm_6KUBm/exec',
+  GAS_WEB_APP_URL: 'https://script.google.com/macros/s/AKfycbxWgwgIlAKbkF9raEX566-Pp9iCQGUKiDJk7yXmcSrJXcXSoRkIcWKpAnCDhKME8udm/exec',
   BRIDGE_TIMEOUT_MS: 30000,
   REQUEST_TIMEOUT_MS: 90000,
   BUILD_ID: '20260817-message-port-v2',
