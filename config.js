@@ -1,5 +1,5 @@
 window.LIFE_APP_CONFIG = Object.freeze({
-  GAS_WEB_APP_URL: 'https://script.google.com/macros/s/AKfycbx0VVvz-WSK6h6C2TCMjTIk5EbZvJ15M5u1K5GpJ9Uvi85q9CcwfP8gd-EkqtEucQcu/exec',
+  GAS_WEB_APP_URL: 'https://script.google.com/macros/s/AKfycbwEkuaRFgwdPwiErMlK2MkmvIk4905jRuIIk9U8LAYhyh70PLLhAJ4svUh_Cm_6KUBm/exec',
   BRIDGE_TIMEOUT_MS: 30000,
   REQUEST_TIMEOUT_MS: 90000,
   BRAND: Object.freeze({
